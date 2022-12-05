@@ -56,13 +56,13 @@ describe Sidekiq::Launcher do
         it "stores process info in redis" do
           subject.heartbeat
 
-          workers, rtt = Sidekiq.redis { |c| c.hmget(subject.identity, "busy", "rtt_us") }
+          workers, rtt = Sidekiq.redis { |c| c.hmget(Sidekiq.redis_key(subject.identity.to_s), "busy", "rtt_us") }
 
           assert_equal "1", workers
           refute_nil rtt
           assert_in_delta 1000, rtt.to_i, 1000
 
-          expires = Sidekiq.redis { |c| c.pttl(subject.identity) }
+          expires = Sidekiq.redis { |c| c.pttl(Sidekiq.redis_key(subject.identity.to_s)) }
 
           assert_in_delta 60000, expires, 500
         end
@@ -100,11 +100,11 @@ describe Sidekiq::Launcher do
         it "stores process info in redis" do
           subject.heartbeat
 
-          info = Sidekiq.redis { |c| c.hmget(subject.identity, "busy") }
+          info = Sidekiq.redis { |c| c.hmget(Sidekiq.redis_key(subject.identity.to_s), "busy") }
 
           assert_equal ["1"], info
 
-          expires = Sidekiq.redis { |c| c.pttl(subject.identity) }
+          expires = Sidekiq.redis { |c| c.pttl(Sidekiq.redis_key(subject.identity.to_s)) }
 
           assert_in_delta 60000, expires, 50
         end
@@ -134,9 +134,9 @@ describe Sidekiq::Launcher do
         end
 
         it "stores process info in redis" do
-          info = Sidekiq.redis { |c| c.hmget(@id, "busy") }
+          info = Sidekiq.redis { |c| c.hmget(Sidekiq.redis_key(@id.to_s), "busy") }
           assert_equal ["1"], info
-          expires = Sidekiq.redis { |c| c.pttl(@id) }
+          expires = Sidekiq.redis { |c| c.pttl(Sidekiq.redis_key(@id.to_s)) }
           assert_in_delta 60000, expires, 500
         end
       end
@@ -157,9 +157,9 @@ describe Sidekiq::Launcher do
       end
 
       it "stores process info in redis" do
-        info = Sidekiq.redis { |c| c.hmget(@id, "busy") }
+        info = Sidekiq.redis { |c| c.hmget(Sidekiq.redis_key(@id.to_s), "busy") }
         assert_equal ["1"], info
-        expires = Sidekiq.redis { |c| c.pttl(@id) }
+        expires = Sidekiq.redis { |c| c.pttl(Sidekiq.redis_key(@id.to_s)) }
         assert_in_delta 60000, expires, 50
       end
     end

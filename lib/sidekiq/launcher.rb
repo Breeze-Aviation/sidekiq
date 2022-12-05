@@ -168,12 +168,12 @@ module Sidekiq
           conn.multi { |transaction|
             transaction.sadd(Sidekiq.redis_key("processes"), [Sidekiq.redis_key(key)])
             transaction.exists?(Sidekiq.redis_key(key))
-            transaction.hmset(Sidekiq.redis_key(key), Sidekiq.redis_key("info"), to_json,
-              Sidekiq.redis_key("busy"), curstate.size,
-              Sidekiq.redis_key("beat"), Time.now.to_f,
-              Sidekiq.redis_key("rtt_us"), rtt,
-              Sidekiq.redis_key("quiet"), @done.to_s,
-              Sidekiq.redis_key("rss"), kb)
+            transaction.hmset(Sidekiq.redis_key(key), "info", to_json,
+              "busy", curstate.size,
+              "beat", Time.now.to_f,
+              "rtt_us", rtt,
+              "quiet", @done.to_s,
+              "rss", kb)
             transaction.expire(Sidekiq.redis_key(key), 60)
             transaction.rpop(Sidekiq.redis_key("#{key}-signals"))
           }

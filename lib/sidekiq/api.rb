@@ -938,12 +938,12 @@ module Sidekiq
           procs.each do |key|
             pipeline.hmget(
               Sidekiq.redis_key(key),
-              Sidekiq.redis_key("info"),
-              Sidekiq.redis_key("busy"),
-              Sidekiq.redis_key("beat"),
-              Sidekiq.redis_key("quiet"),
-              Sidekiq.redis_key("rss"),
-              Sidekiq.redis_key("rtt_us")
+              "info",
+              "busy",
+              "beat",
+              "quiet",
+              "rss",
+              "rtt_us"
             )
           end
         end

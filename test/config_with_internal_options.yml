@@ -9,3 +9,4 @@
   - [seldom]
 
 :strict:       false
+:redis_prefix: 'MyService'

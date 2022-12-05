@@ -8,7 +8,7 @@ describe Sidekiq::BasicFetch do
   before do
     Sidekiq.redis do |conn|
       conn.flushdb
-      conn.rpush("queue:basic", "msg")
+      conn.rpush(Sidekiq.redis_key("queue:basic"), "msg")
     end
     Sidekiq.reset!
     @config = Sidekiq
@@ -40,8 +40,8 @@ describe Sidekiq::BasicFetch do
 
   it "bulk requeues" do
     Sidekiq.redis do |conn|
-      conn.rpush("queue:foo", ["bob", "bar"])
-      conn.rpush("queue:bar", "widget")
+      conn.rpush(Sidekiq.redis_key("queue:foo"), ["bob", "bar"])
+      conn.rpush(Sidekiq.redis_key("queue:bar"), "widget")
     end
 
     q1 = Sidekiq::Queue.new("foo")

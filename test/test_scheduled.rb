@@ -69,8 +69,8 @@ describe Sidekiq::Scheduled do
 
         Sidekiq.redis do |conn|
           %w[queue:queue_1 queue:queue_2 queue:queue_4 queue:queue_5].each do |queue_name|
-            assert_equal 1, conn.llen(queue_name)
-            job = Sidekiq.load_json(conn.lrange(queue_name, 0, -1)[0])
+            assert_equal 1, conn.llen(Sidekiq.redis_key(queue_name.to_s))
+            job = Sidekiq.load_json(conn.lrange(Sidekiq.redis_key(queue_name.to_s), 0, -1)[0])
             assert_equal enqueued_time.to_f, job["enqueued_at"]
             assert_equal created_time.to_f, job["created_at"]
           end
@@ -96,7 +96,7 @@ describe Sidekiq::Scheduled do
 
         Sidekiq.redis do |conn|
           %w[queue:queue_1 queue:queue_4].each do |queue_name|
-            assert_equal 0, conn.llen(queue_name)
+            assert_equal 0, conn.llen(Sidekiq.redis_key(queue_name.to_s))
           end
         end
 
@@ -132,7 +132,7 @@ describe Sidekiq::Scheduled do
         # Start with 10 processes
         10.times do |i|
           Sidekiq.redis do |conn|
-            conn.sadd("processes", ["process-#{i}"])
+            conn.sadd(Sidekiq.redis_key("processes"), ["process-#{i}"])
           end
         end
 
@@ -142,7 +142,7 @@ describe Sidekiq::Scheduled do
         # Reduce to 3 processes
         (3..9).each do |i|
           Sidekiq.redis do |conn|
-            conn.srem("processes", ["process-#{i}"])
+            conn.srem(Sidekiq.redis_key("processes"), ["process-#{i}"])
           end
         end
 

@@ -61,10 +61,10 @@ describe Sidekiq::Web do
   describe "busy" do
     it "can display workers" do
       Sidekiq.redis do |conn|
-        conn.incr("busy")
-        conn.sadd("processes", ["foo:1234"])
-        conn.hmset("foo:1234", "info", Sidekiq.dump_json("hostname" => "foo", "started_at" => Time.now.to_f, "queues" => [], "concurrency" => 10), "at", Time.now.to_f, "busy", 4)
-        identity = "foo:1234:work"
+        conn.incr(Sidekiq.redis_key("busy"))
+        conn.sadd(Sidekiq.redis_key("processes"), ["foo:1234"])
+        conn.hmset(Sidekiq.redis_key("foo:1234"), "info", Sidekiq.dump_json("hostname" => "foo", "started_at" => Time.now.to_f, "queues" => [], "concurrency" => 10), "at", Time.now.to_f, "busy", 4)
+        identity = Sidekiq.redis_key("foo:1234:work")
         hash = {queue: "critical", payload: {"class" => WebWorker.name, "args" => [1, "abc"]}, run_at: Time.now.to_i}
         conn.hmset(identity, 1001, Sidekiq.dump_json(hash))
       end
@@ -79,7 +79,7 @@ describe Sidekiq::Web do
 
     it "can quiet a process" do
       identity = "identity"
-      signals_key = "#{identity}-signals"
+      signals_key = Sidekiq.redis_key("#{identity}-signals")
 
       assert_nil Sidekiq.redis { |c| c.lpop signals_key }
       post "/busy", "quiet" => "1", "identity" => identity
@@ -89,7 +89,7 @@ describe Sidekiq::Web do
 
     it "can stop a process" do
       identity = "identity"
-      signals_key = "#{identity}-signals"
+      signals_key = Sidekiq.redis_key("#{identity}-signals")
 
       assert_nil Sidekiq.redis { |c| c.lpop signals_key }
       post "/busy", "stop" => "1", "identity" => identity
@@ -136,7 +136,7 @@ describe Sidekiq::Web do
   it "can sort on enqueued_at column" do
     Sidekiq.redis do |conn|
       (1000..1005).each do |i|
-        conn.lpush("queue:default", Sidekiq.dump_json(args: [i], enqueued_at: Time.now.to_i + i))
+        conn.lpush(Sidekiq.redis_key("queue:default"), Sidekiq.dump_json(args: [i], enqueued_at: Time.now.to_i + i))
       end
     end
 
@@ -151,8 +151,8 @@ describe Sidekiq::Web do
 
   it "can delete a queue" do
     Sidekiq.redis do |conn|
-      conn.rpush("queue:foo", "{\"args\":[],\"enqueued_at\":1567894960}")
-      conn.sadd("queues", ["foo"])
+      conn.rpush(Sidekiq.redis_key("queue:foo"), "{\"args\":[],\"enqueued_at\":1567894960}")
+      conn.sadd(Sidekiq.redis_key("queues"), ["foo"])
     end
 
     get "/queues/foo"
@@ -162,8 +162,8 @@ describe Sidekiq::Web do
     assert_equal 302, last_response.status
 
     Sidekiq.redis do |conn|
-      refute conn.smembers("queues").include?("foo")
-      refute conn.exists?("queue:foo")
+      refute conn.smembers(Sidekiq.redis_key("queues")).include?("foo")
+      refute conn.exists?(Sidekiq.redis_key("queue:foo"))
     end
   end
 
@@ -241,9 +241,9 @@ describe Sidekiq::Web do
 
   it "can delete a job" do
     Sidekiq.redis do |conn|
-      conn.rpush("queue:foo", '{"args":[],"enqueued_at":1567894960}')
-      conn.rpush("queue:foo", '{"foo":"bar","args":[],"enqueued_at":1567894960}')
-      conn.rpush("queue:foo", '{"foo2":"bar2","args":[],"enqueued_at":1567894960}')
+      conn.rpush(Sidekiq.redis_key("queue:foo"), '{"args":[],"enqueued_at":1567894960}')
+      conn.rpush(Sidekiq.redis_key("queue:foo"), '{"foo":"bar","args":[],"enqueued_at":1567894960}')
+      conn.rpush(Sidekiq.redis_key("queue:foo"), '{"foo2":"bar2","args":[],"enqueued_at":1567894960}')
     end
 
     get "/queues/foo"
@@ -253,7 +253,7 @@ describe Sidekiq::Web do
     assert_equal 302, last_response.status
 
     Sidekiq.redis do |conn|
-      refute conn.lrange("queue:foo", 0, -1).include?("{\"foo\":\"bar\"}")
+      refute conn.lrange(Sidekiq.redis_key("queue:foo"), 0, -1).include?("{\"foo\":\"bar\"}")
     end
   end
 
@@ -387,7 +387,7 @@ describe Sidekiq::Web do
   it "can delete scheduled" do
     params = add_scheduled
     Sidekiq.redis do |conn|
-      assert_equal 1, conn.zcard("schedule")
+      assert_equal 1, conn.zcard(Sidekiq.redis_key("schedule"))
       post "/scheduled", "key" => [job_params(*params)], "delete" => "Delete"
       assert_equal 302, last_response.status
       assert_equal "http://example.org/scheduled", last_response.header["Location"]
@@ -399,7 +399,7 @@ describe Sidekiq::Web do
     q = Sidekiq::Queue.new
     params = add_scheduled
     Sidekiq.redis do |conn|
-      assert_equal 1, conn.zcard("schedule")
+      assert_equal 1, conn.zcard(Sidekiq.redis_key("schedule"))
       assert_equal 0, q.size
       post "/scheduled", "key" => [job_params(*params)], "add_to_queue" => "AddToQueue"
       assert_equal 302, last_response.status
@@ -442,13 +442,19 @@ describe Sidekiq::Web do
     # on /workers page
     Sidekiq.redis do |conn|
       pro = "foo:1234"
-      conn.sadd("processes", [pro])
-      conn.hmset(pro, "info", Sidekiq.dump_json("started_at" => Time.now.to_f, "labels" => ["frumduz"], "queues" => [], "concurrency" => 10), "busy", 1, "beat", Time.now.to_f)
-      identity = "#{pro}:work"
+      conn.sadd(Sidekiq.redis_key("processes"), [pro])
+      conn.hmset(Sidekiq.redis_key(pro.to_s), "info", Sidekiq.dump_json("started_at" => Time.now.to_f, "labels" => ["frumduz"], "queues" => [], "concurrency" => 10), "busy", 1, "beat", Time.now.to_f)
+      identity = Sidekiq.redis_key("#{pro}:work")
       hash = {queue: "critical", payload: {"class" => "FailWorker", "args" => ["<a>hello</a>"]}, run_at: Time.now.to_i}
       conn.hmset(identity, 100001, Sidekiq.dump_json(hash))
-      conn.incr("busy")
+      conn.incr(Sidekiq.redis_key("busy"))
     end
+
+    # Sidekiq.redis do |conn|
+    #   puts "INFO:"
+    #   puts conn.hmget(Sidekiq.redis_key("foo:1234"), "info")
+    #   puts ""
+    # end
 
     get "/busy"
     assert_equal 200, last_response.status
@@ -515,9 +521,9 @@ describe Sidekiq::Web do
   describe "stats" do
     before do
       Sidekiq.redis do |conn|
-        conn.set("stat:processed", 5)
-        conn.set("stat:failed", 2)
-        conn.sadd("queues", ["default"])
+        conn.set(Sidekiq.redis_key("stat:processed"), 5)
+        conn.set(Sidekiq.redis_key("stat:failed"), 2)
+        conn.sadd(Sidekiq.redis_key("queues"), ["default"])
       end
       2.times { add_retry }
       3.times { add_scheduled }
@@ -568,9 +574,9 @@ describe Sidekiq::Web do
   describe "stats/queues" do
     before do
       Sidekiq.redis do |conn|
-        conn.set("stat:processed", 5)
-        conn.set("stat:failed", 2)
-        conn.sadd("queues", ["default", "queue2"])
+        conn.set(Sidekiq.redis_key("stat:processed"), 5)
+        conn.set(Sidekiq.redis_key("stat:failed"), 2)
+        conn.sadd(Sidekiq.redis_key("queues"), ["default", "queue2"])
       end
       2.times { add_retry }
       3.times { add_scheduled }
@@ -640,7 +646,7 @@ describe Sidekiq::Web do
            "jid" => SecureRandom.hex(12),
            "tags" => ["tag1", "tag2"]}
     Sidekiq.redis do |conn|
-      conn.zadd("schedule", score, Sidekiq.dump_json(msg))
+      conn.zadd(Sidekiq.redis_key("schedule"), score, Sidekiq.dump_json(msg))
     end
     [msg, score]
   end
@@ -656,7 +662,7 @@ describe Sidekiq::Web do
            "jid" => SecureRandom.hex(12)}
     score = Time.now.to_f
     Sidekiq.redis do |conn|
-      conn.zadd("retry", score, Sidekiq.dump_json(msg))
+      conn.zadd(Sidekiq.redis_key("retry"), score, Sidekiq.dump_json(msg))
     end
 
     [msg, score]
@@ -673,7 +679,7 @@ describe Sidekiq::Web do
            "jid" => jid}
     score = Time.now.to_f
     Sidekiq.redis do |conn|
-      conn.zadd("dead", score, Sidekiq.dump_json(msg))
+      conn.zadd(Sidekiq.redis_key("dead"), score, Sidekiq.dump_json(msg))
     end
     [msg, score]
   end
@@ -682,7 +688,7 @@ describe Sidekiq::Web do
     job = "{ something bad }"
     score = Time.now.to_f
     Sidekiq.redis do |conn|
-      conn.zadd("dead", score, job)
+      conn.zadd(Sidekiq.redis_key("dead"), score, job)
     end
     [job, score]
   end
@@ -698,7 +704,7 @@ describe Sidekiq::Web do
            "jid" => SecureRandom.hex(12)}
     score = Time.now.to_f
     Sidekiq.redis do |conn|
-      conn.zadd("retry", score, Sidekiq.dump_json(msg))
+      conn.zadd(Sidekiq.redis_key("retry"), score, Sidekiq.dump_json(msg))
     end
 
     [msg, score]
@@ -713,9 +719,9 @@ describe Sidekiq::Web do
     msg = "{\"queue\":\"default\",\"payload\":{\"retry\":true,\"queue\":\"default\",\"timeout\":20,\"backtrace\":5,\"class\":\"HardWorker\",\"args\":[\"bob\",10,5],\"jid\":\"2b5ad2b016f5e063a1c62872\"},\"run_at\":1361208995}"
     Sidekiq.redis do |conn|
       conn.multi do |transaction|
-        transaction.sadd("processes", [key])
-        transaction.hmset(key, "info", Sidekiq.dump_json("hostname" => "foo", "started_at" => Time.now.to_f, "queues" => []), "at", Time.now.to_f, "busy", 4)
-        transaction.hmset("#{key}:work", Time.now.to_f, msg)
+        transaction.sadd(Sidekiq.redis_key("processes"), [key])
+        transaction.hmset(Sidekiq.redis_key(key.to_s), "info", Sidekiq.dump_json("hostname" => "foo", "started_at" => Time.now.to_f, "queues" => []), "at", Time.now.to_f, "busy", 4)
+        transaction.hmset(Sidekiq.redis_key("#{key}:work"), Time.now.to_f, msg)
       end
     end
   end
