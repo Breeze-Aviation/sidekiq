@@ -14,13 +14,14 @@ Gem::Specification.new do |gem|
   gem.version = Sidekiq::VERSION
   gem.required_ruby_version = ">= 2.5.0"
 
-  gem.metadata = {
-    "homepage_uri" => "https://sidekiq.org",
-    "bug_tracker_uri" => "https://github.com/mperham/sidekiq/issues",
-    "documentation_uri" => "https://github.com/mperham/sidekiq/wiki",
-    "changelog_uri" => "https://github.com/mperham/sidekiq/blob/main/Changes.md",
-    "source_code_uri" => "https://github.com/mperham/sidekiq"
-  }
+  if spec.respond_to?(:metadata)
+    spec.metadata["allowed_push_host"] = "https://rubygems.pkg.github.com/Breeze-Aviation"
+    spec.metadata["homepage_uri"] = spec.homepage
+    spec.metadata["source_code_uri"] = "https://github.com/Breeze-Aviation/sidekiq"
+    spec.metadata["changelog_uri"] = "https://github.com/Breeze-Aviation/sidekiq"
+  else
+    raise "RubyGems 2.0 or newer is required to protect against public gem pushes."
+  end
 
   gem.add_dependency "redis", ["<5", ">= 4.5.0"]
   gem.add_dependency "connection_pool", ["<3", ">= 2.2.5"]
