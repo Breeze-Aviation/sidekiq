@@ -107,7 +107,7 @@ module Sidekiq
 
       nowdate = Time.now.utc.strftime("%Y-%m-%d")
       begin
-        Sidekiq.redis do |conn| 
+        Sidekiq.redis do |conn|
           conn.pipelined do |pipeline|
             pipeline.incrby(Sidekiq.redis_key("stat:processed"), procd)
             pipeline.incrby(Sidekiq.redis_key("stat:processed:#{nowdate}"), procd)
@@ -149,7 +149,7 @@ module Sidekiq
 
           # work is the current set of executing jobs
           work_key = Sidekiq.redis_key("#{key}:work")
-          
+
           conn.pipelined do |transaction|
             transaction.unlink(work_key)
             curstate.each_pair do |tid, hash|

@@ -117,17 +117,17 @@ module Sidekiq
     # @api private
     def fetch_stats_slow!
       processes = Sidekiq.redis { |conn|
-        conn.sscan_each(Sidekiq.redis_key("processes")).to_a 
+        conn.sscan_each(Sidekiq.redis_key("processes")).to_a
       }
 
       queues = Sidekiq.redis { |conn|
-        conn.sscan_each(Sidekiq.redis_key("queues")).to_a 
+        conn.sscan_each(Sidekiq.redis_key("queues")).to_a
       }
 
       pipe2_res = Sidekiq.redis { |conn|
         conn.pipelined do |pipeline|
           processes.each { |key| pipeline.hget(Sidekiq.redis_key(key), "busy") }
-          queues.each { |queue| pipeline.llen(Sidekiq.redis_key("queue:#{queue}")) } 
+          queues.each { |queue| pipeline.llen(Sidekiq.redis_key("queue:#{queue}")) }
         end
       }
 
@@ -153,7 +153,7 @@ module Sidekiq
 
       mset_args = []
       stats.each do |stat|
-        mset_args << Sidekiq.redis_key("stat:#{stat}") 
+        mset_args << Sidekiq.redis_key("stat:#{stat}")
         mset_args << 0
       end
       Sidekiq.redis do |conn|
@@ -171,7 +171,7 @@ module Sidekiq
     class Queues
       def lengths
         Sidekiq.redis do |conn|
-          queues = conn.sscan_each(Sidekiq.redis_key("queues")).to_a 
+          queues = conn.sscan_each(Sidekiq.redis_key("queues")).to_a
 
           lengths = conn.pipelined { |pipeline|
             queues.each do |queue|
@@ -263,7 +263,7 @@ module Sidekiq
     #
     # @return [Integer] the size
     def size
-      Sidekiq.redis { |con| con.llen(Sidekiq.redis_key(@rname)) } 
+      Sidekiq.redis { |con| con.llen(Sidekiq.redis_key(@rname)) }
     end
 
     # @return [Boolean] if the queue is currently paused
@@ -278,7 +278,7 @@ module Sidekiq
     # @return [Float] in seconds
     def latency
       entry = Sidekiq.redis { |conn|
-        conn.lrange(Sidekiq.redis_key(@rname), -1, -1) 
+        conn.lrange(Sidekiq.redis_key(@rname), -1, -1)
       }.first
       return 0 unless entry
       job = Sidekiq.load_json(entry)
@@ -296,7 +296,7 @@ module Sidekiq
       loop do
         range_start = page * page_size - deleted_size
         range_end = range_start + page_size - 1
-        entries = Sidekiq.redis { |conn| 
+        entries = Sidekiq.redis { |conn|
           conn.lrange(Sidekiq.redis_key(@rname), range_start, range_end)
         }
         break if entries.empty?
@@ -656,7 +656,7 @@ module Sidekiq
 
       match = "*#{match}*" unless match.include?("*")
       Sidekiq.redis do |conn|
-        conn.zscan_each(Sidekiq.redis_key(name), match: match, count: count) do |entry, score| 
+        conn.zscan_each(Sidekiq.redis_key(name), match: match, count: count) do |entry, score|
           yield SortedEntry.new(self, score, entry)
         end
       end
@@ -664,7 +664,7 @@ module Sidekiq
 
     # @return [Boolean] always true
     def clear
-      Sidekiq.redis do |conn| 
+      Sidekiq.redis do |conn|
         conn.unlink(Sidekiq.redis_key(name))
       end
       true
@@ -687,7 +687,7 @@ module Sidekiq
     # @param job [Hash] the job data
     def schedule(timestamp, job)
       Sidekiq.redis do |conn|
-        conn.zadd(Sidekiq.redis_key(name), timestamp.to_f.to_s, Sidekiq.dump_json(job)) 
+        conn.zadd(Sidekiq.redis_key(name), timestamp.to_f.to_s, Sidekiq.dump_json(job))
       end
     end
 
@@ -758,7 +758,7 @@ module Sidekiq
     # :nodoc:
     # @api private
     def delete_by_value(name, value)
-      Sidekiq.redis do |conn| 
+      Sidekiq.redis do |conn|
         ret = conn.zrem(Sidekiq.redis_key(name), value)
         @_size -= 1 if ret
         ret
@@ -928,7 +928,7 @@ module Sidekiq
     end
 
     def each
-      result = Sidekiq.redis { |conn| 
+      result = Sidekiq.redis { |conn|
         procs = conn.sscan_each(Sidekiq.redis_key("processes")).to_a.sort
 
         # We're making a tradeoff here between consuming more memory instead of
@@ -937,13 +937,14 @@ module Sidekiq
         conn.pipelined do |pipeline|
           procs.each do |key|
             pipeline.hmget(
-              Sidekiq.redis_key(key), 
-              Sidekiq.redis_key("info"), 
-              Sidekiq.redis_key("busy"), 
-              Sidekiq.redis_key("beat"), 
-              Sidekiq.redis_key("quiet"), 
-              Sidekiq.redis_key("rss"), 
-              Sidekiq.redis_key("rtt_us"))
+              Sidekiq.redis_key(key),
+              Sidekiq.redis_key("info"),
+              Sidekiq.redis_key("busy"),
+              Sidekiq.redis_key("beat"),
+              Sidekiq.redis_key("quiet"),
+              Sidekiq.redis_key("rss"),
+              Sidekiq.redis_key("rtt_us")
+            )
           end
         end
       }
@@ -993,7 +994,7 @@ module Sidekiq
     # @return [String] empty string if no leader
     def leader
       @leader ||= begin
-        x = Sidekiq.redis { |c| c.get(Sidekiq.redis_key("dear-leader")) } 
+        x = Sidekiq.redis { |c| c.get(Sidekiq.redis_key("dear-leader")) }
         # need a non-falsy value so we can memoize
         x ||= ""
         x
@@ -1076,7 +1077,7 @@ module Sidekiq
 
     def signal(sig)
       key = "#{identity}-signals"
-      Sidekiq.redis do |c| 
+      Sidekiq.redis do |c|
         c.multi do |transaction|
           transaction.lpush(Sidekiq.redis_key(key), sig)
           transaction.expire(Sidekiq.redis_key(key), 60)
@@ -1145,7 +1146,7 @@ module Sidekiq
     # processes but the alternative is a global counter
     # which can easily get out of sync with crashy processes.
     def size
-      Sidekiq.redis do |conn| 
+      Sidekiq.redis do |conn|
         procs = conn.sscan_each(Sidekiq.redis_key("processes")).to_a
         if procs.empty?
           0
