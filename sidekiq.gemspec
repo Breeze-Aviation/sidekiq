@@ -14,11 +14,11 @@ Gem::Specification.new do |gem|
   gem.version = Sidekiq::VERSION
   gem.required_ruby_version = ">= 2.5.0"
 
-  if spec.respond_to?(:metadata)
-    spec.metadata["allowed_push_host"] = "https://rubygems.pkg.github.com/Breeze-Aviation"
-    spec.metadata["homepage_uri"] = spec.homepage
-    spec.metadata["source_code_uri"] = "https://github.com/Breeze-Aviation/sidekiq"
-    spec.metadata["changelog_uri"] = "https://github.com/Breeze-Aviation/sidekiq"
+  if gem.respond_to?(:metadata)
+    gem.metadata["allowed_push_host"] = "https://rubygems.pkg.github.com/Breeze-Aviation"
+    gem.metadata["homepage_uri"] = gem.homepage
+    gem.metadata["source_code_uri"] = "https://github.com/Breeze-Aviation/sidekiq"
+    gem.metadata["changelog_uri"] = "https://github.com/Breeze-Aviation/sidekiq"
   else
     raise "RubyGems 2.0 or newer is required to protect against public gem pushes."
   end
