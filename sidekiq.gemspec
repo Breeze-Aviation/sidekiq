@@ -23,7 +23,7 @@ Gem::Specification.new do |gem|
     raise "RubyGems 2.0 or newer is required to protect against public gem pushes."
   end
 
-  gem.add_dependency "redis", ["<5", ">= 4.5.0"]
-  gem.add_dependency "connection_pool", ["<3", ">= 2.2.5"]
+  gem.add_dependency "redis", ">= 4.2.0"
+  gem.add_dependency "connection_pool", ">= 2.2.2"
   gem.add_dependency "rack", "~> 2.0"
 end
