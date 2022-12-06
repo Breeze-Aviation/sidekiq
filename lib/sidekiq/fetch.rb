@@ -46,7 +46,7 @@ module Sidekiq # :nodoc:
         return nil
       end
 
-      keys = qs.map { |q| Sidekiq.redis_key(q) }
+      keys = qs.map { |q| q.is_a?(String) ? Sidekiq.redis_key(q) : q }
 
       queue, job = redis { |conn| conn.brpop(*keys) }
       UnitOfWork.new(queue, job, config) if queue

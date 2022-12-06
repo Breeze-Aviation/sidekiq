@@ -337,6 +337,12 @@ module Sidekiq
   # uses the redis prefix if set, otherwise will just return the key name passed in
   def self.redis_key(key_name, redis_prefix: nil)
     redis_prefix ||= self[:redis_prefix]
+
+    raise "Invalid Key Name" if redis_prefix && key_name&.start_with?(redis_prefix)
+
+    # TODO - what if we make this just return if the key name is already prefixed?
+    # return key_name if key_name.start_with?(redis_prefix)
+
     redis_prefix ? "#{redis_prefix}:#{key_name}" : key_name
   end
 

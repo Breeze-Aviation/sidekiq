@@ -198,11 +198,11 @@ module Sidekiq
       # should never depend on sidekiq/api.
       def cleanup
         # dont run cleanup more than once per minute
-        return 0 unless Sidekiq.redis { |conn| conn.set("process_cleanup", "1", nx: true, ex: 60) }
+        return 0 unless Sidekiq.redis { |conn| conn.set(Sidekiq.redis_key("process_cleanup"), "1", nx: true, ex: 60) }
 
         count = 0
         Sidekiq.redis do |conn|
-          procs = conn.sscan_each("processes").to_a
+          procs = conn.sscan_each(Sidekiq.redis_key("processes")).to_a
           heartbeats = conn.pipelined { |pipeline|
             procs.each do |key|
               pipeline.hget(key, "info")
@@ -215,7 +215,7 @@ module Sidekiq
           to_prune = procs.select.with_index { |proc, i|
             heartbeats[i].nil?
           }
-          count = conn.srem("processes", to_prune) unless to_prune.empty?
+          count = conn.srem(Sidekiq.redis_key("processes"), to_prune) unless to_prune.empty?
         end
         count
       end
